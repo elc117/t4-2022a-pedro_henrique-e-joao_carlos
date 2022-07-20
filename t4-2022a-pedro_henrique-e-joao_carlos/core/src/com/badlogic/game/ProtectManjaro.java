@@ -5,18 +5,21 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.audio.Music;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 
 
 public class ProtectManjaro extends Game {
 	SpriteBatch batch;
 	BitmapFont font;
 	Music background_music;
+	OrthographicCamera camera;
 
 	@Override
 	public void create() {
 		batch = new SpriteBatch();
 		font = new BitmapFont();
 		background_music = Gdx.audio.newMusic(Gdx.files.internal("soundtrack_menu.mp3"));
+		camera = new OrthographicCamera();
 		this.setScreen(new MenuScreen(this));
 	}
 
