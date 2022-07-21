@@ -12,13 +12,11 @@ public class PlotScreen implements Screen {
     static private int WIDTH = 1200;
     static private int HEIGHT = 675;
     Texture plot;
-    Texture controls;
 
     public PlotScreen(final ProtectManjaro passed_game) {
         game = passed_game;
 
         plot = new Texture(Gdx.files.internal("plot.png"));
-        controls = new Texture(Gdx.files.internal("controls.png"));
 
         game.camera.setToOrtho(false, WIDTH, HEIGHT);
     }
@@ -32,8 +30,7 @@ public class PlotScreen implements Screen {
         game.camera.update();
         game.batch.setProjectionMatrix(game.camera.combined);
         game.batch.begin();
-        game.batch.draw(plot, 200, 300);
-        game.batch.draw(controls, 200, 100);
+        game.batch.draw(plot, 200, 100);
         game.font.draw(game.batch, "Press Space to continue", 900, 50);
         game.batch.end();
 
@@ -81,3 +78,4 @@ public class PlotScreen implements Screen {
 
     }
 }
+

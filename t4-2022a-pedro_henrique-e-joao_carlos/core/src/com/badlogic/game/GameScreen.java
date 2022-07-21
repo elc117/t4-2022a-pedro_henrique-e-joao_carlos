@@ -6,6 +6,8 @@ import com.badlogic.gdx.Input.Keys;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.Animation;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 
 
 
@@ -13,32 +15,49 @@ public class GameScreen implements Screen {
     final ProtectManjaro game;
     static private int WIDTH = 1200;
     static private int HEIGHT = 675;
+    float state_time;
     Texture game_background;
     Texture castelo1;
-    Texture knight_img;
-    Texture dragon_img;
-    Rectangle knight;
-    Rectangle dragon;
+
+    Texture walkUpSheet;
+    Texture walkDownSheet;
+    Texture walkLeftSheet;
+    Texture walkRightSheet;
+    Texture idleSheet;
+    Texture attackSheet;
+    Texture flySheet;
+
+    Knight knight;
+    Dragon dragon;
 
     public GameScreen(final ProtectManjaro passed_game) {
         game = passed_game;
+        state_time = 0f;
 
         game_background = new Texture(Gdx.files.internal("game_background.png"));
         castelo1 = new Texture(Gdx.files.internal("Castle1.png"));
-        knight_img = new Texture(Gdx.files.internal("knight.png"));
-        dragon_img = new Texture(Gdx.files.internal("red_dragon1.png"));
 
-        knight = new Rectangle();
-        knight.x = 900;
-        knight.y = 300;
-        knight.height = 64;
-        knight.width = 64;
+        walkUpSheet = new Texture(Gdx.files.internal("knight_walk_up.png"));
+        walkDownSheet = new Texture(Gdx.files.internal("knight_walk_down.png"));
+        walkLeftSheet = new Texture(Gdx.files.internal("knight_walk_left.png"));
+        walkRightSheet = new Texture(Gdx.files.internal("knight_walk_right.png"));
+        idleSheet = new Texture(Gdx.files.internal("knight.png"));
+        attackSheet = new Texture(Gdx.files.internal("knight_attack.png"));
 
-        dragon = new Rectangle();
-        dragon.height = 128;
-        dragon.width = 144;
-        dragon.x = 10;
-        dragon.y = 250;
+        knight = new Knight();
+
+        knight.createWalkUpAnimation(walkUpSheet);
+        knight.createWalkDownAnimation(walkDownSheet);
+        knight.createWalkLeftAnimation(walkLeftSheet);
+        knight.createWalkRightAnimation(walkRightSheet);
+        knight.createIdleAnimation(idleSheet);
+        knight.createAttackAnimation(attackSheet);
+        knight.setAnimation(5);
+
+        flySheet = new Texture(Gdx.files.internal("red_dragon.png"));
+        dragon = new Dragon();
+        dragon.createFlyAnimation(flySheet);
+        
 
         game.camera.setToOrtho(false, WIDTH, HEIGHT);
     }
@@ -47,6 +66,10 @@ public class GameScreen implements Screen {
     public void render(float delta) {
         Gdx.gl.glClearColor(0, 0, 0.2f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+        state_time += Gdx.graphics.getDeltaTime();
+
+        TextureRegion currentDragonFrame = dragon.getAnimationFrame(state_time);
+        TextureRegion currentKnightFrame = knight.getAnimationFrame(state_time);
 
         game.camera.update();
         game.batch.setProjectionMatrix(game.camera.combined);
@@ -54,21 +77,31 @@ public class GameScreen implements Screen {
         game.batch.draw(game_background, 0, 0);
         game.batch.draw(castelo1, 1000, 280);
         game.batch.draw(castelo1, 1000, 100);
-        game.batch.draw(knight_img, knight.x, knight.y);
-        game.batch.draw(dragon_img, dragon.x, dragon.y);
+        game.batch.draw(currentKnightFrame, knight.x, knight.y);
+        game.batch.draw(currentDragonFrame, dragon.x, dragon.y);
         game.batch.end();
 
         if(Gdx.input.isKeyPressed(Keys.UP) || Gdx.input.isKeyPressed(Keys.W)) {
-            knight.y += 250 * Gdx.graphics.getDeltaTime();;
+            knight.y += 100 * Gdx.graphics.getDeltaTime();
+            knight.setAnimation(1);
         }
-        if(Gdx.input.isKeyPressed(Keys.DOWN) || Gdx.input.isKeyPressed(Keys.S)) {
-            knight.y -= 250 * Gdx.graphics.getDeltaTime();;
+        else if(Gdx.input.isKeyPressed(Keys.DOWN) || Gdx.input.isKeyPressed(Keys.S)) {
+            knight.y -= 100 * Gdx.graphics.getDeltaTime();
+            knight.setAnimation(2);
         }
-        if(Gdx.input.isKeyPressed(Keys.LEFT) || Gdx.input.isKeyPressed(Keys.A)) {
-            knight.x -= 250 * Gdx.graphics.getDeltaTime();;
+        else if(Gdx.input.isKeyPressed(Keys.LEFT) || Gdx.input.isKeyPressed(Keys.A)) {
+            knight.x -= 100 * Gdx.graphics.getDeltaTime();
+            knight.setAnimation(3);
         }
-        if(Gdx.input.isKeyPressed(Keys.RIGHT) || Gdx.input.isKeyPressed(Keys.D)) {
-            knight.x += 250 * Gdx.graphics.getDeltaTime();;
+        else if(Gdx.input.isKeyPressed(Keys.RIGHT) || Gdx.input.isKeyPressed(Keys.D)) {
+            knight.x += 100 * Gdx.graphics.getDeltaTime();
+            knight.setAnimation(4);
+        }
+        else if(Gdx.input.isKeyPressed(Keys.SPACE)) {
+            knight.setAnimation(6);
+        }
+        else{
+            knight.setAnimation(5);
         }
 
         if(knight.y > 400){
@@ -121,4 +154,175 @@ public class GameScreen implements Screen {
 
     }
 
+}
+
+class Dragon extends Rectangle {
+    private int hp;
+    private TextureRegion[][] tmp;
+    private TextureRegion[] flyFrames;
+    private Animation<TextureRegion> flyAnimation;
+
+    public Dragon() {
+        this.height = 128;
+        this.width = 144;
+        this.x = 10;
+        this.y = 250;
+        this.hp = 100;
+    }
+
+    public void createFlyAnimation(Texture flySheet) {
+        this.tmp = TextureRegion.split(flySheet, flySheet.getWidth() / 3, flySheet.getHeight() / 1);
+        this.flyFrames = new TextureRegion[3];
+
+        for(int index = 0; index < 3; index++) {
+            this.flyFrames[index] = tmp[0][index];
+        }
+
+        flyAnimation = new Animation<TextureRegion>(1f/6f, flyFrames); 
+    }
+
+    public TextureRegion getAnimationFrame(float state_time) {
+        return flyAnimation.getKeyFrame(state_time, true);
+    }
+}
+
+class Knight extends Rectangle {
+    private TextureRegion[][] tmpUp;
+    private TextureRegion[][] tmpDown;
+    private TextureRegion[][] tmpLeft;
+    private TextureRegion[][] tmpRight;
+    private TextureRegion[][] tmpIdle;
+    private TextureRegion[][] tmpAttack;
+
+    private TextureRegion[] walkUpFrames;
+    private TextureRegion[] walkDownFrames;
+    private TextureRegion[] walkLeftFrames;
+    private TextureRegion[] walkRightFrames;
+    private TextureRegion[] idleFrames;
+    private TextureRegion[] attackFrames;
+
+    private Animation<TextureRegion> walkUpAnimation;
+    private Animation<TextureRegion> walkDownAnimation;
+    private Animation<TextureRegion> walkLeftAnimation;
+    private Animation<TextureRegion> walkRightAnimation;
+    private Animation<TextureRegion> idleAnimation;
+    private Animation<TextureRegion> attackAnimation;
+
+    private Animation<TextureRegion> currentAnimation;
+    private int currentAnimationId;
+
+    public Knight() {
+        this.x = 900;
+        this.y = 300;
+        this.height = 64;
+        this.width = 64;
+    }
+
+    public void createWalkUpAnimation(Texture walkUpSheet) {
+        this.tmpUp = TextureRegion.split(walkUpSheet, walkUpSheet.getWidth() / 9, walkUpSheet.getHeight() / 1);
+        this.walkUpFrames = new TextureRegion[9];
+
+        for(int index = 0; index < 9; index++) {
+            this.walkUpFrames[index] = tmpUp[0][index];
+        }
+
+        this.walkUpAnimation = new Animation<TextureRegion>(1f/10f, walkUpFrames); 
+    }
+
+    public void createWalkDownAnimation(Texture walkDownSheet) {
+        this.tmpDown = TextureRegion.split(walkDownSheet, walkDownSheet.getWidth() / 9, walkDownSheet.getHeight() / 1);
+        this.walkDownFrames = new TextureRegion[9];
+
+        for(int index = 0; index < 9; index++) {
+            this.walkDownFrames[index] = tmpDown[0][index];
+        }
+
+        this.walkDownAnimation = new Animation<TextureRegion>(1f/10f, walkDownFrames); 
+    }
+
+    public void createWalkLeftAnimation(Texture walkLeftSheet) {
+        this.tmpLeft = TextureRegion.split(walkLeftSheet, walkLeftSheet.getWidth() / 9, walkLeftSheet.getHeight() / 1);
+        this.walkLeftFrames = new TextureRegion[9];
+
+        for(int index = 0; index < 9; index++) {
+            this.walkLeftFrames[index] = tmpLeft[0][index];
+        }
+
+        this.walkLeftAnimation = new Animation<TextureRegion>(1f/10f, walkLeftFrames); 
+    }
+
+    public void createWalkRightAnimation(Texture walkRightSheet) {
+        this.tmpRight = TextureRegion.split(walkRightSheet, walkRightSheet.getWidth() / 9, walkRightSheet.getHeight() / 1);
+        this.walkRightFrames = new TextureRegion[9];
+
+        for(int index = 0; index < 9; index++) {
+            this.walkRightFrames[index] = tmpRight[0][index];
+        }
+
+        this.walkRightAnimation = new Animation<TextureRegion>(1f/10f, walkRightFrames); 
+    }
+
+    public void createIdleAnimation(Texture idleSheet) {
+        this.tmpIdle = TextureRegion.split(idleSheet, idleSheet.getWidth() / 1, idleSheet.getHeight() / 1);
+        this.idleFrames = new TextureRegion[1];
+        
+        for(int index = 0; index < 1; index++) {
+            this.idleFrames[index] = tmpIdle[0][index];
+        }
+
+        this.idleAnimation = new Animation<TextureRegion>(1f/10f, idleFrames); 
+    }
+
+    public void createAttackAnimation(Texture attackSheet) {
+        this.tmpAttack = TextureRegion.split(attackSheet, attackSheet.getWidth() / 6, attackSheet.getHeight() / 1);
+        this.attackFrames = new TextureRegion[6];
+
+        for(int index = 0; index < 6; index++) {
+            this.attackFrames[index] = tmpAttack[0][index];
+        }
+
+        this.attackAnimation = new Animation<TextureRegion>(1f/10f, attackFrames); 
+    }
+
+    public TextureRegion getAnimationFrame(float state_time) {
+        if(this.currentAnimationId == 6) {
+            return currentAnimation.getKeyFrame(state_time, true);
+        }
+        else{
+            return currentAnimation.getKeyFrame(state_time, true);
+        }
+    }
+
+    public void setAnimation(int n) {
+        switch(n) {
+            case 1: 
+                this.currentAnimation = this.walkUpAnimation;
+                this.currentAnimationId = 1;
+                break;
+
+            case 2: 
+                this.currentAnimation = this.walkDownAnimation;
+                this.currentAnimationId = 2;
+                break;
+
+            case 3: 
+                this.currentAnimation = this.walkLeftAnimation;
+                this.currentAnimationId = 3;
+                break;
+
+            case 4: 
+                this.currentAnimation = this.walkRightAnimation;
+                this.currentAnimationId = 4;
+                break;
+
+            case 5: 
+                this.currentAnimation = this.idleAnimation;
+                this.currentAnimationId = 5;
+                break;
+            case 6: 
+                this.currentAnimation = this.attackAnimation;
+                this.currentAnimationId = 6;
+                break;
+        }
+    }
 }
