@@ -16,6 +16,10 @@ public class GameScreen implements Screen {
     static private int WIDTH = 1200;
     static private int HEIGHT = 675;
     float state_time;
+    float animation_time;
+    float attacking_time;
+    boolean attacking;
+
     Texture game_background;
     Texture castelo1;
 
@@ -33,6 +37,8 @@ public class GameScreen implements Screen {
     public GameScreen(final ProtectManjaro passed_game) {
         game = passed_game;
         state_time = 0f;
+        attacking = false;
+        attacking_time = 0f;
 
         game_background = new Texture(Gdx.files.internal("game_background.png"));
         castelo1 = new Texture(Gdx.files.internal("Castle1.png"));
@@ -58,7 +64,6 @@ public class GameScreen implements Screen {
         dragon = new Dragon();
         dragon.createFlyAnimation(flySheet);
         
-
         game.camera.setToOrtho(false, WIDTH, HEIGHT);
     }
 
@@ -67,9 +72,10 @@ public class GameScreen implements Screen {
         Gdx.gl.glClearColor(0, 0, 0.2f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         state_time += Gdx.graphics.getDeltaTime();
+        animation_time += Gdx.graphics.getDeltaTime();
 
         TextureRegion currentDragonFrame = dragon.getAnimationFrame(state_time);
-        TextureRegion currentKnightFrame = knight.getAnimationFrame(state_time);
+        TextureRegion currentKnightFrame = knight.getAnimationFrame(animation_time);
 
         game.camera.update();
         game.batch.setProjectionMatrix(game.camera.combined);
@@ -77,31 +83,46 @@ public class GameScreen implements Screen {
         game.batch.draw(game_background, 0, 0);
         game.batch.draw(castelo1, 1000, 280);
         game.batch.draw(castelo1, 1000, 100);
-        game.batch.draw(currentKnightFrame, knight.x, knight.y);
+        if(attacking){
+            game.batch.draw(currentKnightFrame, knight.x - 70, knight.y - 8);
+        }
+        else{
+            game.batch.draw(currentKnightFrame, knight.x, knight.y);
+        }
         game.batch.draw(currentDragonFrame, dragon.x, dragon.y);
         game.batch.end();
 
-        if(Gdx.input.isKeyPressed(Keys.UP) || Gdx.input.isKeyPressed(Keys.W)) {
-            knight.y += 100 * Gdx.graphics.getDeltaTime();
-            knight.setAnimation(1);
+        if(attacking && (state_time >= attacking_time + 0.55f)) {
+            attacking = false;
+            attacking_time = 0f;
         }
-        else if(Gdx.input.isKeyPressed(Keys.DOWN) || Gdx.input.isKeyPressed(Keys.S)) {
-            knight.y -= 100 * Gdx.graphics.getDeltaTime();
-            knight.setAnimation(2);
-        }
-        else if(Gdx.input.isKeyPressed(Keys.LEFT) || Gdx.input.isKeyPressed(Keys.A)) {
-            knight.x -= 100 * Gdx.graphics.getDeltaTime();
-            knight.setAnimation(3);
-        }
-        else if(Gdx.input.isKeyPressed(Keys.RIGHT) || Gdx.input.isKeyPressed(Keys.D)) {
-            knight.x += 100 * Gdx.graphics.getDeltaTime();
-            knight.setAnimation(4);
-        }
-        else if(Gdx.input.isKeyPressed(Keys.SPACE)) {
-            knight.setAnimation(6);
-        }
-        else{
-            knight.setAnimation(5);
+
+        if(!attacking) {
+            if(Gdx.input.isKeyPressed(Keys.UP) || Gdx.input.isKeyPressed(Keys.W)) {
+                knight.y += 100 * Gdx.graphics.getDeltaTime();
+                knight.setAnimation(1);
+            }
+            else if(Gdx.input.isKeyPressed(Keys.DOWN) || Gdx.input.isKeyPressed(Keys.S)) {
+                knight.y -= 100 * Gdx.graphics.getDeltaTime();
+                knight.setAnimation(2);
+            }
+            else if(Gdx.input.isKeyPressed(Keys.LEFT) || Gdx.input.isKeyPressed(Keys.A)) {
+                knight.x -= 100 * Gdx.graphics.getDeltaTime();
+                knight.setAnimation(3);
+            }
+            else if(Gdx.input.isKeyPressed(Keys.RIGHT) || Gdx.input.isKeyPressed(Keys.D)) {
+                knight.x += 100 * Gdx.graphics.getDeltaTime();
+                knight.setAnimation(4);
+            }
+            else if((Gdx.input.isKeyPressed(Keys.P))) {
+                knight.setAnimation(6);
+                attacking = true;
+                attacking_time = state_time;
+                animation_time = 0f;
+            }
+            else{
+                knight.setAnimation(5);
+            }
         }
 
         if(knight.y > 400){
@@ -182,7 +203,7 @@ class Dragon extends Rectangle {
     }
 
     public TextureRegion getAnimationFrame(float state_time) {
-        return flyAnimation.getKeyFrame(state_time, true);
+        return flyAnimation.getKeyFrame(state_time, false);
     }
 }
 
@@ -209,7 +230,6 @@ class Knight extends Rectangle {
     private Animation<TextureRegion> attackAnimation;
 
     private Animation<TextureRegion> currentAnimation;
-    private int currentAnimationId;
 
     public Knight() {
         this.x = 900;
@@ -285,43 +305,32 @@ class Knight extends Rectangle {
     }
 
     public TextureRegion getAnimationFrame(float state_time) {
-        if(this.currentAnimationId == 6) {
-            return currentAnimation.getKeyFrame(state_time, true);
-        }
-        else{
-            return currentAnimation.getKeyFrame(state_time, true);
-        }
+        return currentAnimation.getKeyFrame(state_time, true);
     }
 
     public void setAnimation(int n) {
         switch(n) {
             case 1: 
                 this.currentAnimation = this.walkUpAnimation;
-                this.currentAnimationId = 1;
                 break;
 
             case 2: 
                 this.currentAnimation = this.walkDownAnimation;
-                this.currentAnimationId = 2;
                 break;
 
             case 3: 
                 this.currentAnimation = this.walkLeftAnimation;
-                this.currentAnimationId = 3;
                 break;
 
             case 4: 
                 this.currentAnimation = this.walkRightAnimation;
-                this.currentAnimationId = 4;
                 break;
 
             case 5: 
                 this.currentAnimation = this.idleAnimation;
-                this.currentAnimationId = 5;
                 break;
             case 6: 
                 this.currentAnimation = this.attackAnimation;
-                this.currentAnimationId = 6;
                 break;
         }
     }
