@@ -4,10 +4,13 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.Input.Keys;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import java.util.ListIterator;
+import java.util.ArrayList;
 
 
 
@@ -17,8 +20,12 @@ public class GameScreen implements Screen {
     static private int HEIGHT = 675;
     float state_time;
     float animation_time;
-    float attacking_time;
+    float attacking_cooldown;
     boolean attacking;
+
+    ArrayList<Fireball> fireballs;
+    Texture fireball_img;
+    float fireball_cooldown;
 
     Texture game_background;
     Texture castelo1;
@@ -37,8 +44,10 @@ public class GameScreen implements Screen {
     public GameScreen(final ProtectManjaro passed_game) {
         game = passed_game;
         state_time = 0f;
+        animation_time = 0f;
+        attacking_cooldown = 0f;
+        fireball_cooldown = 0f;
         attacking = false;
-        attacking_time = 0f;
 
         game_background = new Texture(Gdx.files.internal("game_background.png"));
         castelo1 = new Texture(Gdx.files.internal("Castle1.png"));
@@ -63,6 +72,9 @@ public class GameScreen implements Screen {
         flySheet = new Texture(Gdx.files.internal("red_dragon.png"));
         dragon = new Dragon();
         dragon.createFlyAnimation(flySheet);
+
+        fireballs = new ArrayList<Fireball>();
+        fireball_img = new Texture(Gdx.files.internal("fireball.png"));
         
         game.camera.setToOrtho(false, WIDTH, HEIGHT);
     }
@@ -71,8 +83,11 @@ public class GameScreen implements Screen {
     public void render(float delta) {
         Gdx.gl.glClearColor(0, 0, 0.2f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+
         state_time += Gdx.graphics.getDeltaTime();
         animation_time += Gdx.graphics.getDeltaTime();
+        attacking_cooldown += Gdx.graphics.getDeltaTime();
+        fireball_cooldown += Gdx.graphics.getDeltaTime();
 
         TextureRegion currentDragonFrame = dragon.getAnimationFrame(state_time);
         TextureRegion currentKnightFrame = knight.getAnimationFrame(animation_time);
@@ -83,18 +98,25 @@ public class GameScreen implements Screen {
         game.batch.draw(game_background, 0, 0);
         game.batch.draw(castelo1, 1000, 280);
         game.batch.draw(castelo1, 1000, 100);
+
         if(attacking){
             game.batch.draw(currentKnightFrame, knight.x - 70, knight.y - 8);
         }
         else{
             game.batch.draw(currentKnightFrame, knight.x, knight.y);
         }
+
+        for(Fireball fireball : fireballs){
+            game.batch.draw(fireball_img, fireball.x, fireball.y);
+        }
+
         game.batch.draw(currentDragonFrame, dragon.x, dragon.y);
+        //game.font.draw(game.batch, "DRAGON HP %d", x, y)
         game.batch.end();
 
-        if(attacking && (state_time >= attacking_time + 0.55f)) {
+        if(attacking && (animation_time >= 0.55f)) {
             attacking = false;
-            attacking_time = 0f;
+            animation_time = 0f;
         }
 
         if(!attacking) {
@@ -114,11 +136,14 @@ public class GameScreen implements Screen {
                 knight.x += 100 * Gdx.graphics.getDeltaTime();
                 knight.setAnimation(4);
             }
-            else if((Gdx.input.isKeyPressed(Keys.P))) {
+            else if((Gdx.input.isKeyPressed(Keys.P)) && attacking_cooldown >= 0) {
                 knight.setAnimation(6);
                 attacking = true;
-                attacking_time = state_time;
                 animation_time = 0f;
+                attacking_cooldown = -1f;
+                if(knight.overlaps(dragon)){
+                    dragon.hp -= 20;
+                }
             }
             else{
                 knight.setAnimation(5);
@@ -136,6 +161,23 @@ public class GameScreen implements Screen {
         }
         if(knight.x < 200){
             knight.x = 200;
+        }
+
+        if(fireball_cooldown >= 0){
+            fireballs.add(new Fireball());
+            fireball_cooldown = -3f;
+        }
+
+        ListIterator<Fireball> iterator = fireballs.listIterator();
+        while(iterator.hasNext()){
+            Fireball fireball = iterator.next();
+            fireball.Move();
+            if(fireball.x > 1000){
+                iterator.remove();
+            }
+            if(fireball.overlaps(knight)){
+                iterator.remove();
+            }
         }
     }
 
@@ -178,7 +220,7 @@ public class GameScreen implements Screen {
 }
 
 class Dragon extends Rectangle {
-    private int hp;
+    public int hp;
     private TextureRegion[][] tmp;
     private TextureRegion[] flyFrames;
     private Animation<TextureRegion> flyAnimation;
@@ -203,7 +245,7 @@ class Dragon extends Rectangle {
     }
 
     public TextureRegion getAnimationFrame(float state_time) {
-        return flyAnimation.getKeyFrame(state_time, false);
+        return flyAnimation.getKeyFrame(state_time, true);
     }
 }
 
@@ -333,5 +375,21 @@ class Knight extends Rectangle {
                 this.currentAnimation = this.attackAnimation;
                 break;
         }
+    }
+}
+
+class Fireball extends Rectangle {
+    private int speed;
+
+    public Fireball() {
+        this.x = 50;
+        this.y = MathUtils.random(100, 400-64);
+        this.height = 64;
+        this.width = 64;
+        this.speed = 200;
+    }
+
+    public void Move(){
+        this.x += speed * Gdx.graphics.getDeltaTime();
     }
 }
