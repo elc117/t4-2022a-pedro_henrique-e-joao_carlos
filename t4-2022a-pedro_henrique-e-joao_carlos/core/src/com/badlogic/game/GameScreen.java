@@ -80,7 +80,7 @@ public class GameScreen implements Screen {
         knight.createAttackAnimation(attackSheet);
         knight.setAnimation(5);
 
-        flySheet = new Texture(Gdx.files.internal("red_dragon.png"));
+        flySheet = new Texture(Gdx.files.internal("dragon.png"));
         dragon = new Dragon();
         dragon.createFlyAnimation(flySheet);
 
@@ -146,27 +146,27 @@ public class GameScreen implements Screen {
         }
 
         if(!attacking) {
-            if(Gdx.input.isKeyPressed(Keys.UP) || Gdx.input.isKeyPressed(Keys.W)) {
-                knight.y += 100 * Gdx.graphics.getDeltaTime();
-                knight.setAnimation(1);
-            }
-            else if(Gdx.input.isKeyPressed(Keys.DOWN) || Gdx.input.isKeyPressed(Keys.S)) {
-                knight.y -= 100 * Gdx.graphics.getDeltaTime();
-                knight.setAnimation(2);
-            }
-            else if(Gdx.input.isKeyPressed(Keys.LEFT) || Gdx.input.isKeyPressed(Keys.A)) {
-                knight.x -= 100 * Gdx.graphics.getDeltaTime();
-                knight.setAnimation(3);
-            }
-            else if(Gdx.input.isKeyPressed(Keys.RIGHT) || Gdx.input.isKeyPressed(Keys.D)) {
-                knight.x += 100 * Gdx.graphics.getDeltaTime();
-                knight.setAnimation(4);
-            }
-            else if((Gdx.input.isKeyPressed(Keys.P)) && attacking_cooldown >= 0) {
+            if((Gdx.input.isKeyPressed(Keys.P)) && attacking_cooldown >= 0) {
                 knight.setAnimation(6);
                 attacking = true;
                 animation_time = 0f;
                 attacking_cooldown = -1f;
+            }
+            else if(Gdx.input.isKeyPressed(Keys.UP) || Gdx.input.isKeyPressed(Keys.W)) {
+                knight.y += 150 * Gdx.graphics.getDeltaTime();
+                knight.setAnimation(1);
+            }
+            else if(Gdx.input.isKeyPressed(Keys.DOWN) || Gdx.input.isKeyPressed(Keys.S)) {
+                knight.y -= 150 * Gdx.graphics.getDeltaTime();
+                knight.setAnimation(2);
+            }
+            else if(Gdx.input.isKeyPressed(Keys.LEFT) || Gdx.input.isKeyPressed(Keys.A)) {
+                knight.x -= 150 * Gdx.graphics.getDeltaTime();
+                knight.setAnimation(3);
+            }
+            else if(Gdx.input.isKeyPressed(Keys.RIGHT) || Gdx.input.isKeyPressed(Keys.D)) {
+                knight.x += 150 * Gdx.graphics.getDeltaTime();
+                knight.setAnimation(4);
             }
             else{
                 knight.setAnimation(5);
@@ -176,8 +176,8 @@ public class GameScreen implements Screen {
         if(knight.y > 400){
             knight.y = 400;
         }
-        if(knight.y < 100){
-            knight.y = 100;
+        if(knight.y < 50){
+            knight.y = 50;
         }
         if(knight.x > 900){
             knight.x = 900;
@@ -188,7 +188,7 @@ public class GameScreen implements Screen {
 
         if(fireball_cooldown >= 0){
             fireballs.add(new Fireball());
-            fireball_cooldown = -3f;
+            fireball_cooldown = -0.75f;
         }
 
         ListIterator<Fireball> iterator = fireballs.listIterator();
@@ -250,22 +250,22 @@ class Dragon extends Rectangle {
     private Animation<TextureRegion> flyAnimation;
 
     public Dragon() {
-        this.height = 128;
-        this.width = 200;
-        this.x = 10;
-        this.y = 250;
+        this.height = 650;
+        this.width = 760;
+        this.x = -550;
+        this.y = 50;
         this.hp = 100;
     }
 
     public void createFlyAnimation(Texture flySheet) {
-        this.tmp = TextureRegion.split(flySheet, flySheet.getWidth() / 3, flySheet.getHeight() / 1);
-        this.flyFrames = new TextureRegion[3];
+        this.tmp = TextureRegion.split(flySheet, flySheet.getWidth() / 2, flySheet.getHeight() / 1);
+        this.flyFrames = new TextureRegion[2];
 
-        for(int index = 0; index < 3; index++) {
+        for(int index = 0; index < 2; index++) {
             this.flyFrames[index] = tmp[0][index];
         }
 
-        flyAnimation = new Animation<TextureRegion>(1f/6f, flyFrames); 
+        flyAnimation = new Animation<TextureRegion>(1f/2f, flyFrames); 
     }
 
     public TextureRegion getAnimationFrame(float state_time) {
@@ -408,8 +408,8 @@ class Fireball extends Rectangle {
     public Fireball() {
         this.x = 50;
         this.y = MathUtils.random(100, 400-64);
-        this.height = 17;
-        this.width = 59;
+        this.height = 49;
+        this.width = 78;
         this.speed = 200;
     }
 
