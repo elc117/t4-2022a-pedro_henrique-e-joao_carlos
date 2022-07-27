@@ -9,6 +9,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.audio.Music;
 import java.util.ListIterator;
 
 import java.util.ArrayList;
@@ -23,8 +24,15 @@ public class GameScreen implements Screen {
 
     float state_time;
     float animation_time;
+
+    float knockback_time;
+    boolean knockback;
+
     float attacking_cooldown;
     boolean attacking;
+
+    float defending_time;
+    boolean defending;
 
     ArrayList<Fireball> fireballs;
     Texture fireball_img;
@@ -42,10 +50,13 @@ public class GameScreen implements Screen {
     Texture walkRightSheet;
     Texture idleSheet;
     Texture attackSheet;
+    Texture defendingSheet;
     Texture flySheet;
 
     Knight knight;
     Dragon dragon;
+
+    Music sound_effect_UI;
 
     public GameScreen(final ProtectManjaro passed_game) {
         game = passed_game;
@@ -53,9 +64,15 @@ public class GameScreen implements Screen {
 
         state_time = 0f;
         animation_time = 0f;
-        attacking_cooldown = 0f;
         fireball_cooldown = 0f;
+
+        attacking_cooldown = 0f;
+        defending_time = 0f;
+        knockback_time = 0f;
+
         attacking = false;
+        defending = false;
+        knockback = false;
 
         game_background = new Texture(Gdx.files.internal("game_background.png"));
         castelo1 = new Texture(Gdx.files.internal("Castle1.png"));
@@ -69,6 +86,7 @@ public class GameScreen implements Screen {
         walkRightSheet = new Texture(Gdx.files.internal("knight_walk_right.png"));
         idleSheet = new Texture(Gdx.files.internal("knight.png"));
         attackSheet = new Texture(Gdx.files.internal("knight_attack.png"));
+        defendingSheet = new Texture(Gdx.files.internal("knight_defending.png"));
 
         knight = new Knight();
 
@@ -78,6 +96,7 @@ public class GameScreen implements Screen {
         knight.createWalkRightAnimation(walkRightSheet);
         knight.createIdleAnimation(idleSheet);
         knight.createAttackAnimation(attackSheet);
+        knight.createDefendingAnimation(defendingSheet);
         knight.setAnimation(5);
 
         flySheet = new Texture(Gdx.files.internal("dragon.png"));
@@ -86,6 +105,11 @@ public class GameScreen implements Screen {
 
         fireballs = new ArrayList<Fireball>();
         fireball_img = new Texture(Gdx.files.internal("fireball.png"));
+
+        sound_effect_UI = Gdx.audio.newMusic(Gdx.files.internal("dragon_effect_UI.mp3"));
+
+        game.game_music.setLooping(true);
+        game.game_music.play();
         
         game.camera.setToOrtho(false, WIDTH, HEIGHT);
     }
@@ -97,8 +121,11 @@ public class GameScreen implements Screen {
 
         state_time += Gdx.graphics.getDeltaTime();
         animation_time += Gdx.graphics.getDeltaTime();
-        attacking_cooldown += Gdx.graphics.getDeltaTime();
         fireball_cooldown += Gdx.graphics.getDeltaTime();
+
+        attacking_cooldown += Gdx.graphics.getDeltaTime();
+        defending_time += Gdx.graphics.getDeltaTime();
+        knockback_time += Gdx.graphics.getDeltaTime();
 
         TextureRegion currentDragonFrame = dragon.getAnimationFrame(state_time);
         TextureRegion currentKnightFrame = knight.getAnimationFrame(animation_time);
@@ -112,13 +139,16 @@ public class GameScreen implements Screen {
             game.batch.draw(castelo1, 1000, 280);
             game.batch.draw(castelo1, 1000, 100);
         }
-        else if(castle_hits >= 3 && castle_hits < 6){
+        else if(castle_hits >= 3 && castle_hits < 5){
             game.batch.draw(castelo2, 1000, 280);
             game.batch.draw(castelo2, 1000, 100);
         }
-        else if(castle_hits >= 6){
+        else if(castle_hits >= 5){
             game.batch.draw(castelo3, 1000, 280);
             game.batch.draw(castelo3, 1000, 100);
+        }
+
+        if(castle_hits >=6){
             game_over = true;
         }
 
@@ -140,12 +170,15 @@ public class GameScreen implements Screen {
         if(attacking && (animation_time >= 0.55f)) {
             if(knight.overlaps(dragon)){
                 dragon.hp -= 20;
+                knockback = true;
+                knockback_time = 0f;
+                sound_effect_UI.play();
             }
             attacking = false;
             animation_time = 0f;
         }
 
-        if(!attacking) {
+        if(!attacking && !knockback && !defending) {
             if((Gdx.input.isKeyPressed(Keys.P)) && attacking_cooldown >= 0) {
                 knight.setAnimation(6);
                 attacking = true;
@@ -168,7 +201,7 @@ public class GameScreen implements Screen {
                 knight.x += 150 * Gdx.graphics.getDeltaTime();
                 knight.setAnimation(4);
             }
-            else{
+            else {
                 knight.setAnimation(5);
             }
         }
@@ -199,9 +232,32 @@ public class GameScreen implements Screen {
                 iterator.remove();
                 castle_hits += 1;
             }
-            if(fireball.overlaps(knight)){
+            if(fireball.overlaps(knight) && !attacking){
+                defending = true;
+                defending_time = 0f;
                 iterator.remove();
             }
+        }
+
+        if(knockback){
+            knight.setAnimation(5);
+            if(knight.x < 900){
+                knight.x += 50;
+            }
+            if(knockback_time >= 0.4f){
+                knockback = false;
+            }
+        }
+
+        if(defending){
+            knight.setAnimation(7);
+            if(defending_time >= 0.125f){
+                defending = false;
+            }
+        }
+
+        if(game_over){
+            game.setScreen(new GameOverScreen(game));
         }
     }
 
@@ -280,6 +336,7 @@ class Knight extends Rectangle {
     private TextureRegion[][] tmpRight;
     private TextureRegion[][] tmpIdle;
     private TextureRegion[][] tmpAttack;
+    private TextureRegion[][] tmpDefending;
 
     private TextureRegion[] walkUpFrames;
     private TextureRegion[] walkDownFrames;
@@ -287,6 +344,7 @@ class Knight extends Rectangle {
     private TextureRegion[] walkRightFrames;
     private TextureRegion[] idleFrames;
     private TextureRegion[] attackFrames;
+    private TextureRegion[] defendingFrames;
 
     private Animation<TextureRegion> walkUpAnimation;
     private Animation<TextureRegion> walkDownAnimation;
@@ -294,6 +352,7 @@ class Knight extends Rectangle {
     private Animation<TextureRegion> walkRightAnimation;
     private Animation<TextureRegion> idleAnimation;
     private Animation<TextureRegion> attackAnimation;
+    private Animation<TextureRegion> defendingAnimation;
 
     private Animation<TextureRegion> currentAnimation;
 
@@ -351,11 +410,9 @@ class Knight extends Rectangle {
     public void createIdleAnimation(Texture idleSheet) {
         this.tmpIdle = TextureRegion.split(idleSheet, idleSheet.getWidth() / 1, idleSheet.getHeight() / 1);
         this.idleFrames = new TextureRegion[1];
+  
+        this.idleFrames[0] = tmpIdle[0][0];
         
-        for(int index = 0; index < 1; index++) {
-            this.idleFrames[index] = tmpIdle[0][index];
-        }
-
         this.idleAnimation = new Animation<TextureRegion>(1f/10f, idleFrames); 
     }
 
@@ -368,6 +425,15 @@ class Knight extends Rectangle {
         }
 
         this.attackAnimation = new Animation<TextureRegion>(1f/10f, attackFrames); 
+    }
+
+    public void createDefendingAnimation(Texture defendingSheet) {
+        this.tmpDefending = TextureRegion.split(defendingSheet, defendingSheet.getWidth() / 1, defendingSheet.getHeight() / 1);
+        this.defendingFrames = new TextureRegion[1];
+        
+        this.defendingFrames[0] = tmpDefending[0][0];
+    
+        this.defendingAnimation = new Animation<TextureRegion>(1f/10f, defendingFrames); 
     }
 
     public TextureRegion getAnimationFrame(float state_time) {
@@ -397,6 +463,9 @@ class Knight extends Rectangle {
                 break;
             case 6: 
                 this.currentAnimation = this.attackAnimation;
+                break;
+            case 7: 
+                this.currentAnimation = this.defendingAnimation;
                 break;
         }
     }

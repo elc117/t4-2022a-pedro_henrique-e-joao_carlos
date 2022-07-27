@@ -12,6 +12,7 @@ public class ProtectManjaro extends Game {
 	SpriteBatch batch;
 	BitmapFont font;
 	Music background_music;
+	Music game_music;
 	OrthographicCamera camera;
 
 	@Override
@@ -19,6 +20,7 @@ public class ProtectManjaro extends Game {
 		batch = new SpriteBatch();
 		font = new BitmapFont();
 		background_music = Gdx.audio.newMusic(Gdx.files.internal("soundtrack_menu.mp3"));
+		game_music = Gdx.audio.newMusic(Gdx.files.internal("soundtrack_game.mp3"));
 		camera = new OrthographicCamera();
 		this.setScreen(new MenuScreen(this));
 	}
