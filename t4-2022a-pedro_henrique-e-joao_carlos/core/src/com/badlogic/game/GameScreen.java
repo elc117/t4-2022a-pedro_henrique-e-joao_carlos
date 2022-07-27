@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import java.util.ListIterator;
+
 import java.util.ArrayList;
 
 
@@ -18,6 +19,8 @@ public class GameScreen implements Screen {
     final ProtectManjaro game;
     static private int WIDTH = 1200;
     static private int HEIGHT = 675;
+    boolean game_over;
+
     float state_time;
     float animation_time;
     float attacking_cooldown;
@@ -29,6 +32,9 @@ public class GameScreen implements Screen {
 
     Texture game_background;
     Texture castelo1;
+    Texture castelo2;
+    Texture castelo3;
+    int castle_hits;
 
     Texture walkUpSheet;
     Texture walkDownSheet;
@@ -43,6 +49,8 @@ public class GameScreen implements Screen {
 
     public GameScreen(final ProtectManjaro passed_game) {
         game = passed_game;
+        game_over = false;
+
         state_time = 0f;
         animation_time = 0f;
         attacking_cooldown = 0f;
@@ -51,6 +59,9 @@ public class GameScreen implements Screen {
 
         game_background = new Texture(Gdx.files.internal("game_background.png"));
         castelo1 = new Texture(Gdx.files.internal("Castle1.png"));
+        castelo2 = new Texture(Gdx.files.internal("Castle2.png"));
+        castelo3 = new Texture(Gdx.files.internal("Castle3.png"));
+        castle_hits = 0;
 
         walkUpSheet = new Texture(Gdx.files.internal("knight_walk_up.png"));
         walkDownSheet = new Texture(Gdx.files.internal("knight_walk_down.png"));
@@ -96,8 +107,20 @@ public class GameScreen implements Screen {
         game.batch.setProjectionMatrix(game.camera.combined);
         game.batch.begin();
         game.batch.draw(game_background, 0, 0);
-        game.batch.draw(castelo1, 1000, 280);
-        game.batch.draw(castelo1, 1000, 100);
+
+        if(castle_hits < 3){
+            game.batch.draw(castelo1, 1000, 280);
+            game.batch.draw(castelo1, 1000, 100);
+        }
+        else if(castle_hits >= 3 && castle_hits < 6){
+            game.batch.draw(castelo2, 1000, 280);
+            game.batch.draw(castelo2, 1000, 100);
+        }
+        else if(castle_hits >= 6){
+            game.batch.draw(castelo3, 1000, 280);
+            game.batch.draw(castelo3, 1000, 100);
+            game_over = true;
+        }
 
         if(attacking){
             game.batch.draw(currentKnightFrame, knight.x - 70, knight.y - 8);
@@ -111,10 +134,13 @@ public class GameScreen implements Screen {
         }
 
         game.batch.draw(currentDragonFrame, dragon.x, dragon.y);
-        //game.font.draw(game.batch, "DRAGON HP %d", x, y)
+        game.font.draw(game.batch, "DRAGON HP: " + dragon.hp, 300, 500);
         game.batch.end();
 
         if(attacking && (animation_time >= 0.55f)) {
+            if(knight.overlaps(dragon)){
+                dragon.hp -= 20;
+            }
             attacking = false;
             animation_time = 0f;
         }
@@ -141,9 +167,6 @@ public class GameScreen implements Screen {
                 attacking = true;
                 animation_time = 0f;
                 attacking_cooldown = -1f;
-                if(knight.overlaps(dragon)){
-                    dragon.hp -= 20;
-                }
             }
             else{
                 knight.setAnimation(5);
@@ -174,6 +197,7 @@ public class GameScreen implements Screen {
             fireball.Move();
             if(fireball.x > 1000){
                 iterator.remove();
+                castle_hits += 1;
             }
             if(fireball.overlaps(knight)){
                 iterator.remove();
@@ -227,7 +251,7 @@ class Dragon extends Rectangle {
 
     public Dragon() {
         this.height = 128;
-        this.width = 144;
+        this.width = 200;
         this.x = 10;
         this.y = 250;
         this.hp = 100;
@@ -384,8 +408,8 @@ class Fireball extends Rectangle {
     public Fireball() {
         this.x = 50;
         this.y = MathUtils.random(100, 400-64);
-        this.height = 64;
-        this.width = 64;
+        this.height = 17;
+        this.width = 59;
         this.speed = 200;
     }
 
