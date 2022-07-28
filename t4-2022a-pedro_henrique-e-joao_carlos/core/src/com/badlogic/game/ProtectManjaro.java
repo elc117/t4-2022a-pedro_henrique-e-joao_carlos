@@ -34,5 +34,7 @@ public class ProtectManjaro extends Game {
 	public void dispose() {
 		batch.dispose();
 		font.dispose();
+		background_music.dispose();
+		game_music.dispose();
 	}
 }

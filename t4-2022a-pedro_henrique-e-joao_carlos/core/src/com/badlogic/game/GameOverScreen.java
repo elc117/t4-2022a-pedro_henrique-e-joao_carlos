@@ -2,8 +2,10 @@ package com.badlogic.game;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.Input.Keys;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.audio.Music;
 
 public class GameOverScreen implements Screen {
     final ProtectManjaro game;
@@ -11,12 +13,18 @@ public class GameOverScreen implements Screen {
     static private int HEIGHT = 675;
 
     Texture game_over_background;
+    Music game_over_music;
 
     public GameOverScreen(final ProtectManjaro passed_game) {
         game = passed_game;
+
         game_over_background = new Texture(Gdx.files.internal("game_over.png"));
+        game_over_music = Gdx.audio.newMusic(Gdx.files.internal("soundtrack_gameover.mp3"));
+
         game.camera.setToOrtho(false, WIDTH, HEIGHT);
+
         game.game_music.stop();
+        game_over_music.play();
     }
 
     @Override
@@ -29,8 +37,13 @@ public class GameOverScreen implements Screen {
         game.batch.setProjectionMatrix(game.camera.combined);
         game.batch.begin();
         game.batch.draw(game_over_background, 350, 88);
-        game.font.draw(game.batch, "Press Space to retry", 900, 50);
+        game.font.draw(game.batch, "Press Enter to retry", 900, 50);
         game.batch.end();
+
+        if(Gdx.input.isKeyJustPressed(Keys.ENTER)){
+            game_over_music.stop();
+            game.setScreen(new GameScreen(game));
+        }
     }
 
     @Override
@@ -59,8 +72,8 @@ public class GameOverScreen implements Screen {
 
     @Override
     public void dispose() {
-        // TODO Auto-generated method stub
-
+        game_over_background.dispose();
+        game_over_music.dispose();
     }
 
     @Override

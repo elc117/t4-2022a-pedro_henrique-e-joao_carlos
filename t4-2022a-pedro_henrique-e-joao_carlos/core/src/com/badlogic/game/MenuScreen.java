@@ -35,7 +35,7 @@ public class MenuScreen implements Screen {
         game.batch.end();
 
         // If player activates the game, dispose of this menu.
-        if (Gdx.input.isKeyJustPressed(Keys.SPACE)) {
+        if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
             game.setScreen(new PlotScreen(game));
             dispose();
         }
@@ -67,14 +67,12 @@ public class MenuScreen implements Screen {
 
     @Override
     public void dispose() {
-        // TODO Auto-generated method stub
-
+        menu_background.dispose();
     }
 
     @Override
     public void pause() {
         // TODO Auto-generated method stub
-
     }
 
 }

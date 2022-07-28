@@ -3,22 +3,21 @@ package com.badlogic.game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.Input.Keys;
-import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.GL20;
 
-
-public class PlotScreen implements Screen {
+public class GameWinScreen implements Screen {
     final ProtectManjaro game;
     static private int WIDTH = 1200;
     static private int HEIGHT = 675;
-    Texture plot;
 
-    public PlotScreen(final ProtectManjaro passed_game) {
+    Texture game_win_background;
+
+    public GameWinScreen(final ProtectManjaro passed_game) {
         game = passed_game;
-
-        plot = new Texture(Gdx.files.internal("plot.png"));
-
+        game_win_background = new Texture(Gdx.files.internal("game_win_background.png"));
         game.camera.setToOrtho(false, WIDTH, HEIGHT);
+        game.game_music.stop();
     }
 
     @Override
@@ -30,15 +29,12 @@ public class PlotScreen implements Screen {
         game.camera.update();
         game.batch.setProjectionMatrix(game.camera.combined);
         game.batch.begin();
-        game.batch.draw(plot, 333, 100);
-        game.font.draw(game.batch, "Press Enter to continue", 900, 50);
+        game.batch.draw(game_win_background, 350, 20);
+        game.font.draw(game.batch, "Press Enter to play again", 1000, 50);
         game.batch.end();
-
-        // If player activates the game, dispose of this menu.
+        
         if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
-            game.background_music.stop();
             game.setScreen(new GameScreen(game));
-            dispose();
         }
     }
 
@@ -68,8 +64,7 @@ public class PlotScreen implements Screen {
 
     @Override
     public void dispose() {
-        // TODO Auto-generated method stub
-
+        game_win_background.dispose();
     }
 
     @Override
@@ -77,5 +72,5 @@ public class PlotScreen implements Screen {
         // TODO Auto-generated method stub
 
     }
-}
 
+}
