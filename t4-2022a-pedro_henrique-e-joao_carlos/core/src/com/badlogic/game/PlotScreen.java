@@ -34,10 +34,8 @@ public class PlotScreen implements Screen {
         game.font.draw(game.batch, "Press Enter to continue", 900, 50);
         game.batch.end();
 
-        // If player activates the game, dispose of this menu.
         if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
-            game.background_music.stop();
-            game.setScreen(new GameScreen(game));
+            game.setScreen(new DifficultyScreen(game));
             dispose();
         }
     }
@@ -68,8 +66,7 @@ public class PlotScreen implements Screen {
 
     @Override
     public void dispose() {
-        // TODO Auto-generated method stub
-
+        plot.dispose();
     }
 
     @Override

@@ -2,12 +2,8 @@ package com.badlogic.game;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
-import com.badlogic.gdx.Input.Keys;
-import com.badlogic.gdx.math.Rectangle;
-import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.audio.Music;
 
@@ -21,102 +17,75 @@ public class GameScreen implements Screen {
     static private int WIDTH = 1200;
     static private int HEIGHT = 675;
 
+    int FIREBALL_SPEED;
+    float FIREBALL_COOLDOWN;
+
     float state_time;
-    float animation_time;
-
-    float knockback_time;
-    boolean knockback;
-
-    float attacking_cooldown;
-    boolean attacking;
-
-    float defending_time;
-    boolean defending;
-
-    ArrayList<Fireball> fireballs;
-    Texture fireball_img;
-    float fireball_cooldown;
+    float dt;
 
     Texture game_background;
-    Texture castelo1;
-    Texture castelo2;
-    Texture castelo3;
-    int castle_hits;
-
-    Texture walkUpSheet;
-    Texture walkDownSheet;
-    Texture walkLeftSheet;
-    Texture walkRightSheet;
-    Texture idleSheet;
-    Texture attackSheet;
-    Texture defendingSheet;
-    Texture flySheet;
 
     Knight knight;
     Dragon dragon;
 
+    Castle castelo1;
+    Castle castelo2;
+
+    ArrayList<Fireball> fireballs;
+    float fireball_cooldown;
+
     Texture hp_bar_sheet;
     TextureRegion[][] hp_bar;
-
-    Music sound_effect_UI;
-    Music sound_effect_attack;
+    
+    Music game_music;
+    Music sound_effect_explosion;
 
     public GameScreen(final ProtectManjaro passed_game) {
         game = passed_game;
-
         state_time = 0f;
-        animation_time = 0f;
-        fireball_cooldown = 0f;
-
-        attacking_cooldown = 0f;
-        defending_time = 0f;
-        knockback_time = 0f;
-
-        attacking = false;
-        defending = false;
-        knockback = false;
-
-        game_background = new Texture(Gdx.files.internal("game_background.png"));
-        castelo1 = new Texture(Gdx.files.internal("Castle1.png"));
-        castelo2 = new Texture(Gdx.files.internal("Castle2.png"));
-        castelo3 = new Texture(Gdx.files.internal("Castle3.png"));
-        castle_hits = 0;
-
-        walkUpSheet = new Texture(Gdx.files.internal("knight_walk_up.png"));
-        walkDownSheet = new Texture(Gdx.files.internal("knight_walk_down.png"));
-        walkLeftSheet = new Texture(Gdx.files.internal("knight_walk_left.png"));
-        walkRightSheet = new Texture(Gdx.files.internal("knight_walk_right.png"));
-        idleSheet = new Texture(Gdx.files.internal("knight.png"));
-        attackSheet = new Texture(Gdx.files.internal("knight_attack.png"));
-        defendingSheet = new Texture(Gdx.files.internal("knight_defending.png"));
+        dt = Gdx.graphics.getDeltaTime();
 
         knight = new Knight();
-
-        knight.createWalkUpAnimation(walkUpSheet);
-        knight.createWalkDownAnimation(walkDownSheet);
-        knight.createWalkLeftAnimation(walkLeftSheet);
-        knight.createWalkRightAnimation(walkRightSheet);
-        knight.createIdleAnimation(idleSheet);
-        knight.createAttackAnimation(attackSheet);
-        knight.createDefendingAnimation(defendingSheet);
         knight.setAnimation(5);
 
-        flySheet = new Texture(Gdx.files.internal("dragon.png"));
         dragon = new Dragon();
-        dragon.createFlyAnimation(flySheet);
 
+        castelo1 = new Castle(1000, 280);
+        castelo2 = new Castle(1000, 100);
+
+        game_background = new Texture(Gdx.files.internal("game_background.png"));
+        
         fireballs = new ArrayList<Fireball>();
-        fireball_img = new Texture(Gdx.files.internal("fireball.png"));
+        fireball_cooldown = 0f;
 
         hp_bar_sheet = new Texture(Gdx.files.internal("hp_bars.png"));
         hp_bar = new TextureRegion[1][6];
         hp_bar = TextureRegion.split(hp_bar_sheet, hp_bar_sheet.getWidth() / 1, hp_bar_sheet.getHeight() / 6);
 
-        sound_effect_UI = Gdx.audio.newMusic(Gdx.files.internal("dragon_effect_UI.mp3"));
-        sound_effect_attack = Gdx.audio.newMusic(Gdx.files.internal("attack_effect.mp3"));
+        game_music = Gdx.audio.newMusic(Gdx.files.internal("soundtrack_game.mp3"));
+        sound_effect_explosion = Gdx.audio.newMusic(Gdx.files.internal("explosion_effect.wav"));
 
-        game.game_music.setLooping(true);
-        game.game_music.play();
+        game_music.setLooping(true);
+        game_music.play();
+
+        switch(game.difficulty){
+            case 1:
+                FIREBALL_SPEED = 120;
+                FIREBALL_COOLDOWN = -1.3f;
+                break;
+            case 2:
+                FIREBALL_SPEED = 200;
+                FIREBALL_COOLDOWN = -0.9f;
+                break;
+            case 3:
+                FIREBALL_SPEED = 250;
+                FIREBALL_COOLDOWN = -0.8f;
+                break;
+            case 4:
+                FIREBALL_SPEED = 5000;
+                FIREBALL_COOLDOWN = -0.01f;
+                break;
+        }
         
         game.camera.setToOrtho(false, WIDTH, HEIGHT);
     }
@@ -130,7 +99,7 @@ public class GameScreen implements Screen {
         updateDt();
 
         TextureRegion currentDragonFrame = dragon.getAnimationFrame(state_time);
-        TextureRegion currentKnightFrame = knight.getAnimationFrame(animation_time);
+        TextureRegion currentKnightFrame = knight.getAnimationFrame();
 
         game.camera.update();
         game.batch.setProjectionMatrix(game.camera.combined);
@@ -138,20 +107,10 @@ public class GameScreen implements Screen {
 
         game.batch.draw(game_background, 0, 0);
 
-        if(castle_hits < 3){
-            game.batch.draw(castelo1, 1000, 280);
-            game.batch.draw(castelo1, 1000, 100);
-        }
-        else if(castle_hits >= 3 && castle_hits < 5){
-            game.batch.draw(castelo2, 1000, 280);
-            game.batch.draw(castelo2, 1000, 100);
-        }
-        else if(castle_hits >= 5){
-            game.batch.draw(castelo3, 1000, 280);
-            game.batch.draw(castelo3, 1000, 100);
-        }
-
-        if(attacking){
+        game.batch.draw(castelo1.getTexture(), castelo1.x, castelo1.y);
+        game.batch.draw(castelo2.getTexture(), castelo2.x, castelo2.y);
+        
+        if(knight.attacking){
             game.batch.draw(currentKnightFrame, knight.x - 70, knight.y - 8);
         }
         else{
@@ -159,7 +118,7 @@ public class GameScreen implements Screen {
         }
 
         for(Fireball fireball : fireballs){
-            game.batch.draw(fireball_img, fireball.x, fireball.y);
+            game.batch.draw(fireball.texture, fireball.x, fireball.y);
         }
 
         game.batch.draw(currentDragonFrame, -550, 50);
@@ -168,13 +127,13 @@ public class GameScreen implements Screen {
         game.batch.end();
 
         
-        manageAttack();
+        knight.manageAttack(dragon.sound_effect_UI, dragon);
 
-        inputs();
+        knight.inputs();
 
-        manageKnockback();
+        knight.manageKnockback();
 
-        manageDefense();
+        knight.manageDefense();
 
         manageFireball();
 
@@ -182,98 +141,19 @@ public class GameScreen implements Screen {
     }
 
     public void updateDt(){
-        state_time += Gdx.graphics.getDeltaTime();
-        animation_time += Gdx.graphics.getDeltaTime();
-        fireball_cooldown += Gdx.graphics.getDeltaTime();
-
-        attacking_cooldown += Gdx.graphics.getDeltaTime();
-        defending_time += Gdx.graphics.getDeltaTime();
-        knockback_time += Gdx.graphics.getDeltaTime();
-    }
-
-    public void manageAttack(){
-        if(attacking && (animation_time >= 0.55f)) {
-            if(knight.overlaps(dragon)){
-                dragon.hp--;
-                knockback = true;
-                knockback_time = 0f;
-                sound_effect_UI.play();
-            }
-            attacking = false;
-            animation_time = 0f;
-        }
-    }
-
-    public void inputs(){
-        if(!attacking && !knockback && !defending) {
-            if(Gdx.input.isKeyJustPressed(Keys.SPACE) && attacking_cooldown >= 0) {
-                knight.setAnimation(6);
-                sound_effect_attack.play();
-                attacking = true;
-                animation_time = 0f;
-                attacking_cooldown = -1f;
-            }
-            else if(Gdx.input.isKeyPressed(Keys.UP) || Gdx.input.isKeyPressed(Keys.W)) {
-                knight.y += 170 * Gdx.graphics.getDeltaTime();
-                knight.setAnimation(1);
-            }
-            else if(Gdx.input.isKeyPressed(Keys.DOWN) || Gdx.input.isKeyPressed(Keys.S)) {
-                knight.y -= 170 * Gdx.graphics.getDeltaTime();
-                knight.setAnimation(2);
-            }
-            else if(Gdx.input.isKeyPressed(Keys.LEFT) || Gdx.input.isKeyPressed(Keys.A)) {
-                knight.x -= 170 * Gdx.graphics.getDeltaTime();
-                knight.setAnimation(3);
-            }
-            else if(Gdx.input.isKeyPressed(Keys.RIGHT) || Gdx.input.isKeyPressed(Keys.D)) {
-                knight.x += 170 * Gdx.graphics.getDeltaTime();
-                knight.setAnimation(4);
-            }
-            else {
-                knight.setAnimation(5);
-            }
-        }
-
-        if(knight.y > 400){
-            knight.y = 400;
-        }
-        if(knight.y < 50){
-            knight.y = 50;
-        }
-        if(knight.x > 900){
-            knight.x = 900;
-        }
-        if(knight.x < 200){
-            knight.x = 200;
-        }
-    }
-    
-    public void manageKnockback(){
-        if(knockback){
-            knight.setAnimation(5);
-            if(knight.x < 900){
-                knight.x += 50;
-            }
-            if(knockback_time >= 0.4f){
-                knockback = false;
-            }
-        }
-    }
-
-    public void manageDefense(){
-        if(defending){
-            knight.setAnimation(7);
-            if(defending_time >= 0.125f){
-                defending = false;
-            }
-        }
+        state_time += dt;
+        knight.animation_time += dt;
+        knight.attacking_cooldown += dt;
+        knight.defending_time += dt;
+        knight.knockback_time += dt;
+        fireball_cooldown += dt;
     }
 
     public void manageFireball(){
 
         if(fireball_cooldown >= 0){
-            fireballs.add(new Fireball());
-            fireball_cooldown = -0.9f;
+            fireballs.add(new Fireball(FIREBALL_SPEED));
+            fireball_cooldown = FIREBALL_COOLDOWN;
         }
 
         ListIterator<Fireball> iterator = fireballs.listIterator();
@@ -282,23 +162,29 @@ public class GameScreen implements Screen {
             fireball.Move();
             if(fireball.x > 1000){
                 iterator.remove();
-                castle_hits += 1;
+                if(sound_effect_explosion.isPlaying()){
+                    sound_effect_explosion.stop();
+                }
+                sound_effect_explosion.play();
+                castelo1.hits += 1;
+                castelo2.hits += 1;
             }
-            if(fireball.overlaps(knight) && !attacking){
-                defending = true;
-                defending_time = 0f;
+            if(fireball.overlaps(knight) && !knight.attacking && !knight.knockback){
+                knight.defending = true;
+                knight.defending_time = 0f;
                 iterator.remove();
             }
         }
     }
 
     public void checkGameOver(){
-        if(castle_hits >=6){
+        if(castelo1.hits >=6){
             game.setScreen(new GameOverScreen(game));
+            dispose();
         }
         if(dragon.hp < 0){
-            sound_effect_UI.stop();
             game.setScreen(new GameWinScreen(game));
+            dispose();
         }
     }
 
@@ -328,27 +214,21 @@ public class GameScreen implements Screen {
 
     @Override
     public void dispose() {
-        fireball_img.dispose();
-
-        game_background.dispose();
+        knight.dispose();
+        dragon.dispose();
         castelo1.dispose();
         castelo2.dispose();
-        castelo3.dispose();
-    
-        walkUpSheet.dispose();
-        walkDownSheet.dispose();
-        walkLeftSheet.dispose();
-        walkRightSheet.dispose();
-        idleSheet.dispose();
-        attackSheet.dispose();
-        defendingSheet.dispose();
-        flySheet.dispose();
+
+        for(Fireball fireball : fireballs){
+            fireball.dispose();
+        }
+
+        game_background.dispose();
     
         hp_bar_sheet.dispose();
     
-        sound_effect_UI.dispose();
-        sound_effect_attack.dispose();
-
+        game_music.dispose();
+        sound_effect_explosion.dispose();
     }
 
     @Override
@@ -357,192 +237,4 @@ public class GameScreen implements Screen {
 
     }
 
-}
-
-class Dragon extends Rectangle {
-    public int hp;
-    private TextureRegion[][] tmp;
-    private TextureRegion[] flyFrames;
-    private Animation<TextureRegion> flyAnimation;
-
-    public Dragon() {
-        this.height = 100;
-        this.width = 20;
-        this.x = 200;
-        this.y = 250;
-        this.hp = 5;
-    }
-
-    public void createFlyAnimation(Texture flySheet) {
-        this.tmp = TextureRegion.split(flySheet, flySheet.getWidth() / 2, flySheet.getHeight() / 1);
-        this.flyFrames = new TextureRegion[2];
-
-        for(int index = 0; index < 2; index++) {
-            this.flyFrames[index] = tmp[0][index];
-        }
-
-        flyAnimation = new Animation<TextureRegion>(1f/2f, flyFrames); 
-    }
-
-    public TextureRegion getAnimationFrame(float state_time) {
-        return flyAnimation.getKeyFrame(state_time, true);
-    }
-}
-
-class Knight extends Rectangle {
-    private TextureRegion[][] tmpUp;
-    private TextureRegion[][] tmpDown;
-    private TextureRegion[][] tmpLeft;
-    private TextureRegion[][] tmpRight;
-    private TextureRegion[][] tmpIdle;
-    private TextureRegion[][] tmpAttack;
-    private TextureRegion[][] tmpDefending;
-
-    private TextureRegion[] walkUpFrames;
-    private TextureRegion[] walkDownFrames;
-    private TextureRegion[] walkLeftFrames;
-    private TextureRegion[] walkRightFrames;
-    private TextureRegion[] idleFrames;
-    private TextureRegion[] attackFrames;
-    private TextureRegion[] defendingFrames;
-
-    private Animation<TextureRegion> walkUpAnimation;
-    private Animation<TextureRegion> walkDownAnimation;
-    private Animation<TextureRegion> walkLeftAnimation;
-    private Animation<TextureRegion> walkRightAnimation;
-    private Animation<TextureRegion> idleAnimation;
-    private Animation<TextureRegion> attackAnimation;
-    private Animation<TextureRegion> defendingAnimation;
-
-    private Animation<TextureRegion> currentAnimation;
-
-    public Knight() {
-        this.x = 900;
-        this.y = 300;
-        this.height = 50;
-        this.width = 64;
-    }
-
-    public void createWalkUpAnimation(Texture walkUpSheet) {
-        this.tmpUp = TextureRegion.split(walkUpSheet, walkUpSheet.getWidth() / 9, walkUpSheet.getHeight() / 1);
-        this.walkUpFrames = new TextureRegion[9];
-
-        for(int index = 0; index < 9; index++) {
-            this.walkUpFrames[index] = tmpUp[0][index];
-        }
-
-        this.walkUpAnimation = new Animation<TextureRegion>(1f/10f, walkUpFrames); 
-    }
-
-    public void createWalkDownAnimation(Texture walkDownSheet) {
-        this.tmpDown = TextureRegion.split(walkDownSheet, walkDownSheet.getWidth() / 9, walkDownSheet.getHeight() / 1);
-        this.walkDownFrames = new TextureRegion[9];
-
-        for(int index = 0; index < 9; index++) {
-            this.walkDownFrames[index] = tmpDown[0][index];
-        }
-
-        this.walkDownAnimation = new Animation<TextureRegion>(1f/10f, walkDownFrames); 
-    }
-
-    public void createWalkLeftAnimation(Texture walkLeftSheet) {
-        this.tmpLeft = TextureRegion.split(walkLeftSheet, walkLeftSheet.getWidth() / 9, walkLeftSheet.getHeight() / 1);
-        this.walkLeftFrames = new TextureRegion[9];
-
-        for(int index = 0; index < 9; index++) {
-            this.walkLeftFrames[index] = tmpLeft[0][index];
-        }
-
-        this.walkLeftAnimation = new Animation<TextureRegion>(1f/10f, walkLeftFrames); 
-    }
-
-    public void createWalkRightAnimation(Texture walkRightSheet) {
-        this.tmpRight = TextureRegion.split(walkRightSheet, walkRightSheet.getWidth() / 9, walkRightSheet.getHeight() / 1);
-        this.walkRightFrames = new TextureRegion[9];
-
-        for(int index = 0; index < 9; index++) {
-            this.walkRightFrames[index] = tmpRight[0][index];
-        }
-
-        this.walkRightAnimation = new Animation<TextureRegion>(1f/10f, walkRightFrames); 
-    }
-
-    public void createIdleAnimation(Texture idleSheet) {
-        this.tmpIdle = TextureRegion.split(idleSheet, idleSheet.getWidth() / 1, idleSheet.getHeight() / 1);
-        this.idleFrames = new TextureRegion[1];
-  
-        this.idleFrames[0] = tmpIdle[0][0];
-        
-        this.idleAnimation = new Animation<TextureRegion>(1f/10f, idleFrames); 
-    }
-
-    public void createAttackAnimation(Texture attackSheet) {
-        this.tmpAttack = TextureRegion.split(attackSheet, attackSheet.getWidth() / 6, attackSheet.getHeight() / 1);
-        this.attackFrames = new TextureRegion[6];
-
-        for(int index = 0; index < 6; index++) {
-            this.attackFrames[index] = tmpAttack[0][index];
-        }
-
-        this.attackAnimation = new Animation<TextureRegion>(1f/10f, attackFrames); 
-    }
-
-    public void createDefendingAnimation(Texture defendingSheet) {
-        this.tmpDefending = TextureRegion.split(defendingSheet, defendingSheet.getWidth() / 1, defendingSheet.getHeight() / 1);
-        this.defendingFrames = new TextureRegion[1];
-        
-        this.defendingFrames[0] = tmpDefending[0][0];
-    
-        this.defendingAnimation = new Animation<TextureRegion>(1f/10f, defendingFrames); 
-    }
-
-    public TextureRegion getAnimationFrame(float state_time) {
-        return currentAnimation.getKeyFrame(state_time, true);
-    }
-
-    public void setAnimation(int n) {
-        switch(n) {
-            case 1: 
-                this.currentAnimation = this.walkUpAnimation;
-                break;
-
-            case 2: 
-                this.currentAnimation = this.walkDownAnimation;
-                break;
-
-            case 3: 
-                this.currentAnimation = this.walkLeftAnimation;
-                break;
-
-            case 4: 
-                this.currentAnimation = this.walkRightAnimation;
-                break;
-
-            case 5: 
-                this.currentAnimation = this.idleAnimation;
-                break;
-            case 6: 
-                this.currentAnimation = this.attackAnimation;
-                break;
-            case 7: 
-                this.currentAnimation = this.defendingAnimation;
-                break;
-        }
-    }
-}
-
-class Fireball extends Rectangle {
-    private int speed;
-
-    public Fireball() {
-        this.x = 50;
-        this.y = MathUtils.random(100, 400);
-        this.height = 30;
-        this.width = 70;
-        this.speed = 200;
-    }
-
-    public void Move(){
-        this.x += speed * Gdx.graphics.getDeltaTime();
-    }
 }

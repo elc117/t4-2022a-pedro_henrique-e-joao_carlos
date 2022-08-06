@@ -3,6 +3,7 @@ package com.badlogic.game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.Input.Keys;
+import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.GL20;
 
@@ -12,12 +13,17 @@ public class GameWinScreen implements Screen {
     static private int HEIGHT = 675;
 
     Texture game_win_background;
+    Music game_win_music;
 
     public GameWinScreen(final ProtectManjaro passed_game) {
         game = passed_game;
+
         game_win_background = new Texture(Gdx.files.internal("game_win_background.png"));
+        game_win_music = Gdx.audio.newMusic(Gdx.files.internal("soundtrack_gamewin.wav"));
+
+        game_win_music.play();
+
         game.camera.setToOrtho(false, WIDTH, HEIGHT);
-        game.game_music.stop();
     }
 
     @Override
@@ -34,7 +40,8 @@ public class GameWinScreen implements Screen {
         game.batch.end();
         
         if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
-            game.setScreen(new GameScreen(game));
+            game.setScreen(new DifficultyScreen(game));
+            dispose();
         }
     }
 
@@ -65,6 +72,7 @@ public class GameWinScreen implements Screen {
     @Override
     public void dispose() {
         game_win_background.dispose();
+        game_win_music.dispose();
     }
 
     @Override

@@ -23,7 +23,7 @@ public class GameOverScreen implements Screen {
 
         game.camera.setToOrtho(false, WIDTH, HEIGHT);
 
-        game.game_music.stop();
+        game_over_music.setLooping(true);
         game_over_music.play();
     }
 
@@ -41,8 +41,8 @@ public class GameOverScreen implements Screen {
         game.batch.end();
 
         if(Gdx.input.isKeyJustPressed(Keys.ENTER)){
-            game_over_music.stop();
-            game.setScreen(new GameScreen(game));
+            game.setScreen(new DifficultyScreen(game));
+            dispose();
         }
     }
 
