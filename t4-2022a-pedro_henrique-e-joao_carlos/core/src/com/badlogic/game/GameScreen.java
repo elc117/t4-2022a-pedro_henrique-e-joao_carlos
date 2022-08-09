@@ -79,7 +79,7 @@ public class GameScreen implements Screen {
                 break;
             case 3:
                 FIREBALL_SPEED = 250;
-                FIREBALL_COOLDOWN = -0.8f;
+                FIREBALL_COOLDOWN = -0.7f;
                 break;
             case 4:
                 FIREBALL_SPEED = 5000;
@@ -127,7 +127,7 @@ public class GameScreen implements Screen {
         game.batch.end();
 
         
-        knight.manageAttack(dragon.sound_effect_UI, dragon);
+        knight.manageAttack(dragon);
 
         knight.inputs();
 
