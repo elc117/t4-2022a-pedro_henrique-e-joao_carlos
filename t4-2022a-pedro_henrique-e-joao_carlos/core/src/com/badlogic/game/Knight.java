@@ -135,13 +135,13 @@ public class Knight extends Rectangle {
         }
     }
 
-    public void manageAttack(Music sound_effect_UI, Dragon dragon){
+    public void manageAttack(Dragon dragon){
         if(this.attacking && (this.attackAnimation.isAnimationFinished(this.animation_time))) {
             if(overlaps(dragon)){
                 dragon.hp--;
                 this.knockback = true;
                 this.knockback_time = 0f;
-                sound_effect_UI.play();
+                dragon.sound_effect_UI.play();
             }
             this.attacking = false;
             this.animation_time = 0f;
